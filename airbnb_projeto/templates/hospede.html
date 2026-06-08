@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="text-success mb-4">🏖️ Portal do Hóspede: Olá, {{ perfil.usrnome }}</h2>
+
+<ul class="nav nav-tabs mb-4" id="hospedeTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" id="catalogo-tab" data-bs-toggle="tab" data-bs-target="#catalogo" type="button" role="tab">Explorar Catálogo</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="reservas-tab" data-bs-toggle="tab" data-bs-target="#reservas" type="button" role="tab">Minhas Reservas</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="perfil-tab" data-bs-toggle="tab" data-bs-target="#perfil" type="button" role="tab">Meu Perfil</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="hospedeTabsContent">
+
+    <div class="tab-pane fade show active" id="catalogo" role="tabpanel">
+        <div class="row">
+            {% for an in catalogo %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100 border-success">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title text-success">{{ an.antitulo }}</h5>
+                            <p class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> {{ an.cepcidade }} - {{ an.cepestado }}</p>
+                            <p class="small">{{ an.andesc }}</p>
+                            <ul class="list-unstyled mb-2 small">
+                                <li><strong>Diária:</strong> R$ {{ an.ancustodiautil }}</li>
+                                <li><strong>Capacidade Máxima:</strong> {{ an.accapacpessoa }} pessoas</li>
+                                <li><strong>Estrutura:</strong> {{ an.acqtdquartos }} Quartos, {{ an.acqtdbanheiros }} Banheiros</li>
+                                <li><strong>Comodidades:</strong> <span class="text-secondary">{{ an.comodidades if an.comodidades else 'Não informadas' }}</span></li>
+                            </ul>
+                            
+                            <div class="accordion accordion-flush mb-3" id="accAvaliacoes{{ an.anid }}">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed py-2 px-0 bg-transparent shadow-none small fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ an.anid }}">
+                                            Ver Avaliações
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ an.anid }}" class="accordion-collapse collapse">
+                                        <div class="accordion-body px-0 py-2 small">
+                                            {% if an.avaliacoes %}
+                                                {% for aval in an.avaliacoes %}
+                                                <div class="mb-2 pb-2 border-bottom">
+                                                    <strong>Nota: {{ aval.nota }}/5</strong><br>
+                                                    <span class="text-muted">{{ aval.comentario }}</span>
+                                                </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">Ainda não há avaliações para este local.</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <hr class="mt-0">
+                            <form action="/hospede/reserva/nova" method="POST" class="bg-light p-3 rounded border">
+                                <input type="hidden" name="AnID" value="{{ an.anid }}">
+                                
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label class="small fw-bold">Check-in</label>
+                                        <input type="date" name="ResDtIn" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small fw-bold">Check-out</label>
+                                        <input type="date" name="ResDtOut" class="form-control form-control-sm" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-2 mb-2">
+                                    <div class="col-3">
+                                        <label class="small fw-bold">Adultos</label>
+                                        <input type="number" name="ResQtdAdultos" class="form-control form-control-sm" value="1" min="1" max="{{ an.accapacpessoa }}" required>
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="small fw-bold">Crianças</label>
+                                        <input type="number" name="ResQtdCriancas" class="form-control form-control-sm" value="0" min="0">
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="small fw-bold">Bebês</label>
+                                        <input type="number" name="ResQtdBebes" class="form-control form-control-sm" value="0" min="0">
+                                    </div>
+                                    <div class="col-3">
+                                        <label class="small fw-bold">Pets</label>
+                                        <input type="number" name="ResQtdPets" class="form-control form-control-sm" value="0" min="0">
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-7">
+                                        <label class="small fw-bold">Forma de Pagamento</label>
+                                        <select name="ResFormaPaga" class="form-select form-select-sm" required>
+                                            <option value="Cartão">Cartão de Crédito</option>
+                                            <option value="Pix">Pix</option>
+                                            <option value="Boleto">Boleto Bancário</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Confirmar Reserva</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="reservas" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Local</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in reservas %}
+                        <tr>
+                            <td><strong>{{ res.antitulo }}</strong></td>
+                            <td>{{ res.resdtin.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ res.resdtout.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if res.resstatus == 'Confirmada' else 'primary' if res.resstatus == 'Avaliada' else 'warning' if res.resstatus == 'Pendente' else 'danger' }}">
+                                    {{ res.resstatus }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if res.resstatus == 'Pendente' or res.resstatus == 'Confirmada' %}
+                                <form action="/hospede/reserva/cancelar/{{ res.resid }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmar cancelamento?');">Cancelar</button>
+                                </form>
+                                {% endif %}
+                                
+                                {% if res.resstatus == 'Confirmada' %}
+                                <div class="dropdown d-inline">
+                                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">Avaliar</button>
+                                    <div class="dropdown-menu p-3 shadow" style="width: 250px;">
+                                        <form action="/hospede/avaliacao/nova" method="POST">
+                                            <input type="hidden" name="AnID" value="{{ res.anid }}">
+                                            <input type="hidden" name="ResID" value="{{ res.resid }}"> <div class="mb-2">
+                                                <label class="form-label small">Nota (1 a 5)</label>
+                                                <input type="number" name="AvNota" class="form-control form-control-sm" min="1" max="5" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small">Comentário</label>
+                                                <textarea name="AvComentario" class="form-control form-control-sm" rows="2" required></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">Enviar Avaliação</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% elif res.resstatus == 'Avaliada' %}
+                                    <span class="badge bg-light text-primary border border-primary">Obrigado por avaliar!</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="perfil" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">Dados da Conta</div>
+                    <div class="card-body">
+                        <form action="/hospede/perfil/atualizar" method="POST">
+                            <div class="mb-3">
+                                <label>Nome Completo</label>
+                                <input type="text" name="UsrNome" class="form-control" value="{{ perfil.usrnome }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>CPF</label>
+                                <input type="text" name="UsrCPF" class="form-control" value="{{ perfil.usrcpf }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Data de Nascimento</label>
+                                <input type="text" class="form-control" value="{{ perfil.usrdtnasc.strftime('%d/%m/%Y') }}" disabled>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Atualizar Dados</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">Meus Telefones</div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for tel in telefones %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ tel.tlfnumero }}
+                                <form action="/hospede/telefone/deletar/{{ tel.tlfid }}" method="POST">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <form action="/hospede/telefone/adicionar" method="POST" class="d-flex gap-2">
+                            <input type="text" name="TlfNumero" class="form-control form-control-sm" placeholder="Novo número (ex: 21999999999)" required>
+                            <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

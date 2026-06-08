@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-primary m-0">⚙️ Painel de Administração Global</h2>
+    <span class="badge bg-primary fs-6">Acesso Nível: Deus</span>
+</div>
+
+<ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dominio" type="button">Dados de Domínio</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#moderacao" type="button">Moderação e Auditoria</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#suporte" type="button">Suporte ao Cliente</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="adminTabsContent">
+
+    <div class="tab-pane fade show active" id="dominio" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-primary mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between">
+                        <h6 class="m-0 mt-1">Comodidades (Tags Globais)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-striped mb-0 small">
+                            <thead><tr><th>ID</th><th>Nome</th><th class="text-end">Ações</th></tr></thead>
+                            <tbody>
+                                {% for c in comodidades %}
+                                <tr>
+                                    <td>{{ c.comid }}</td>
+                                    <td>{{ c.comnome }}</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary py-0" data-bs-toggle="modal" data-bs-target="#modalEditCom{{ c.comid }}">Editar</button>
+                                        <form action="/admin/comodidade/deletar/{{ c.comid }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger py-0" onclick="return confirm('Apagar esta comodidade afetará todos os anúncios. Confirmar?');">X</button>
+                                        </form>
+                                    </td>
+                                </tr>
+
+                                <div class="modal fade" id="modalEditCom{{ c.comid }}" tabindex="-1">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content">
+                                            <form action="/admin/comodidade/editar/{{ c.comid }}" method="POST">
+                                                <div class="modal-header"><h6 class="modal-title">Editar Comodidade</h6></div>
+                                                <div class="modal-body">
+                                                    <input type="text" name="ComNome" class="form-control" value="{{ c.comnome }}" required>
+                                                </div>
+                                                <div class="modal-footer p-1">
+                                                    <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <form action="/admin/comodidade/nova" method="POST" class="d-flex gap-2">
+                            <input type="text" name="ComNome" class="form-control form-control-sm" placeholder="Nova comodidade..." required>
+                            <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm border-secondary">
+                    <div class="card-header bg-secondary text-white">Tipos de Avaliação</div>
+                    <div class="card-body p-0">
+                        <table class="table table-striped mb-0 small">
+                            <thead><tr><th>ID</th><th>Descrição do Tipo</th></tr></thead>
+                            <tbody>
+                                {% for t in tipos_av %}
+                                <tr><td>{{ t.tipoavid }}</td><td>{{ t.tipoavstr }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <form action="/admin/tipoav/novo" method="POST" class="d-flex gap-2">
+                            <input type="text" name="TipoAvStr" class="form-control form-control-sm" placeholder="Novo tipo (ex: Admin->Hospede)" required>
+                            <button type="submit" class="btn btn-secondary btn-sm">Adicionar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="moderacao" role="tabpanel">
+        <h5 class="text-danger">Moderação de Comentários</h5>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-0">
+                <table class="table table-hover small mb-0">
+                    <thead class="table-danger"><tr><th>ID</th><th>Anúncio Alvo</th><th>Nota</th><th>Comentário</th><th>Ação do Admin</th></tr></thead>
+                    <tbody>
+                        {% for av in avaliacoes %}
+                        <tr>
+                            <td>{{ av.avid }}</td>
+                            <td>{{ av.antitulo }}</td>
+                            <td>{{ av.avnota }}/5</td>
+                            <td>"{{ av.avcomentario }}"</td>
+                            <td>
+                                <form action="/admin/moderacao/avaliacao/deletar/{{ av.avid }}" method="POST">
+                                    <button type="submit" class="btn btn-danger btn-sm py-0" onclick="return confirm('Deletar comentário ofensivo?');">Apagar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h5 class="text-danger mt-4">Auditoria de Anúncios (Listagens)</h5>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover small mb-0">
+                    <thead class="table-dark"><tr><th>ID Anúncio</th><th>Título</th><th>Anfitrião Dono</th><th>Ação do Admin</th></tr></thead>
+                    <tbody>
+                        {% for an in anuncios %}
+                        <tr>
+                            <td>{{ an.anid }}</td>
+                            <td><strong>{{ an.antitulo }}</strong></td>
+                            <td>{{ an.anfitriaonome }}</td>
+                            <td>
+                                <form action="/admin/moderacao/anuncio/deletar/{{ an.anid }}" method="POST">
+                                    <button type="submit" class="btn btn-danger btn-sm py-0" onclick="return confirm('Derrubar este anúncio por fraude? Isso apaga acomodações e cancela reservas anexadas.');">Derrubar Anúncio</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="suporte" role="tabpanel">
+        
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="text-info m-0">Gestão de Contas e Acessos</h5>
+            <button class="btn btn-info fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#modalNovoUsr">+ Novo Usuário</button>
+        </div>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-0">
+                <table class="table table-striped small mb-0 align-middle">
+                    <thead class="table-info"><tr><th>ID</th><th>Nome</th><th>CPF</th><th>Papéis</th><th class="text-center">Ações Administrativas</th></tr></thead>
+                    <tbody>
+                        {% for u in usuarios %}
+                        <tr>
+                            <td>{{ u.usrid }}</td>
+                            <td><strong>{{ u.usrnome }}</strong></td>
+                            <td>{{ u.usrcpf }}</td>
+                            <td>
+                                {% if u.is_hospede == 1 %}<span class="badge bg-success">Hóspede</span>{% endif %}
+                                {% if u.is_anfitriao == 1 %}<span class="badge bg-warning text-dark">Anfitrião</span>{% endif %}
+                                {% if u.is_hospede == 0 and u.is_anfitriao == 0 %}<span class="badge bg-secondary">Sem Papel</span>{% endif %}
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-info py-0" data-bs-toggle="modal" data-bs-target="#modalEditUsr{{ u.usrid }}">Editar</button>
+                                
+                                <button class="btn btn-sm btn-outline-primary py-0 mx-1" data-bs-toggle="modal" data-bs-target="#modalRole{{ u.usrid }}">Papéis</button>
+                                
+                                <form action="/admin/suporte/usuario/deletar/{{ u.usrid }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger py-0" onclick="return confirm('ATENÇÃO: Banir este usuário apagará sua conta e todos os vínculos possíveis. Deseja prosseguir?');">Banir</button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="modalEditUsr{{ u.usrid }}" tabindex="-1">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <form action="/admin/suporte/usuario/editar/{{ u.usrid }}" method="POST">
+                                        <div class="modal-header bg-info"><h6 class="modal-title">Editar Cadastro #{{ u.usrid }}</h6></div>
+                                        <div class="modal-body">
+                                            <label class="small">Nome Completo</label>
+                                            <input type="text" name="UsrNome" class="form-control form-control-sm mb-2" value="{{ u.usrnome }}" required>
+                                            <label class="small">CPF</label>
+                                            <input type="text" name="UsrCPF" class="form-control form-control-sm" value="{{ u.usrcpf }}" required>
+                                        </div>
+                                        <div class="modal-footer p-1">
+                                            <button type="submit" class="btn btn-info btn-sm">Salvar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="modalRole{{ u.usrid }}" tabindex="-1">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <form action="/admin/suporte/usuario/papeis/{{ u.usrid }}" method="POST">
+                                        <div class="modal-header bg-primary text-white"><h6 class="modal-title">Gerenciar Acesso: {{ u.usrnome }}</h6></div>
+                                        <div class="modal-body">
+                                            <p class="small text-muted mb-2">Selecione os papéis que deseja ADICIONAR a este usuário:</p>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="role_hospede" id="hosp_{{ u.usrid }}" {% if u.is_hospede == 1 %}checked disabled{% endif %}>
+                                                <label class="form-check-label" for="hosp_{{ u.usrid }}">Tornar Hóspede</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="role_anfitriao" id="anf_{{ u.usrid }}" {% if u.is_anfitriao == 1 %}checked disabled{% endif %}>
+                                                <label class="form-check-label" for="anf_{{ u.usrid }}">Tornar Anfitrião</label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer p-1">
+                                            <button type="submit" class="btn btn-primary btn-sm">Atualizar Papéis</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h5 class="text-info mt-4">Disputas Financeiras (Reservas)</h5>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover small mb-0">
+                    <thead class="table-dark text-white"><tr><th>ResID</th><th>Hóspede</th><th>Local</th><th>Status</th><th>Pagamento</th><th>Data Pgto</th><th>Intervenção</th></tr></thead>
+                    <tbody>
+                        {% for r in reservas %}
+                        <tr>
+                            <td>{{ r.resid }}</td>
+                            <td>{{ r.hospedenome }}</td>
+                            <td>{{ r.antitulo }}</td>
+                            <td><span class="badge bg-secondary">{{ r.resstatus }}</span></td>
+                            <td>{{ r.resformapaga }}</td>
+                            <td>{{ r.resdatapaga.strftime('%d/%m/%Y') if r.resdatapaga else 'Pendente' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning py-0 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEditRes{{ r.resid }}">Ajustar</button>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="modalEditRes{{ r.resid }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content border-warning">
+                                    <form action="/admin/suporte/reserva/editar/{{ r.resid }}" method="POST">
+                                        <div class="modal-header bg-warning text-dark"><h6 class="modal-title fw-bold">Intervenção na Reserva #{{ r.resid }}</h6></div>
+                                        <div class="modal-body">
+                                            <label class="small">Forçar Status</label>
+                                            <select name="ResStatus" class="form-select mb-2" required>
+                                                <option value="Confirmada" {% if r.resstatus == 'Confirmada' %}selected{% endif %}>Confirmada</option>
+                                                <option value="Pendente" {% if r.resstatus == 'Pendente' %}selected{% endif %}>Pendente</option>
+                                                <option value="Cancelada" {% if r.resstatus == 'Cancelada' %}selected{% endif %}>Cancelada (Estorno)</option>
+                                            </select>
+                                            <label class="small">Forma de Pagamento</label>
+                                            <input type="text" name="ResFormaPaga" class="form-control mb-2" value="{{ r.resformapaga }}" required>
+                                            <label class="small">Data do Pagamento (Deixe em branco se não foi pago)</label>
+                                            <input type="date" name="ResDataPaga" class="form-control" value="{{ r.resdatapaga.strftime('%Y-%m-%d') if r.resdatapaga else '' }}">
+                                        </div>
+                                        <div class="modal-footer p-1">
+                                            <button type="submit" class="btn btn-warning btn-sm fw-bold">Aplicar Correção</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<div class="modal fade" id="modalNovoUsr" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-info">
+            <form action="/admin/suporte/usuario/novo" method="POST">
+                <div class="modal-header bg-info"><h5 class="modal-title fw-bold">Criar Nova Conta de Usuário</h5></div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <label class="small">Nome Completo</label>
+                            <input type="text" name="UsrNome" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="small">CPF</label>
+                            <input type="text" name="UsrCPF" class="form-control" placeholder="000.000.000-00" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="small">Data de Nascimento</label>
+                            <input type="date" name="UsrDtNasc" class="form-control" required>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="small fw-bold mb-2">Quais acessos esta conta terá?</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="role_hospede" id="novo_hospede" checked>
+                        <label class="form-check-label" for="novo_hospede">Conta de Hóspede (Pode reservar)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="role_anfitriao" id="novo_anfitriao">
+                        <label class="form-check-label" for="novo_anfitriao">Conta de Anfitrião (Pode anunciar locais)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info fw-bold">Criar e Liberar Acesso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

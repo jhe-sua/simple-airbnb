@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="text-warning mb-4">🔑 Portal do Anfitrião: Olá, {{ perfil.usrnome }}</h2>
+
+<ul class="nav nav-tabs mb-4" id="anfitriaoTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" id="estoque-tab" data-bs-toggle="tab" data-bs-target="#estoque" type="button" role="tab">Meu Estoque (Catálogo)</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="reservas-tab" data-bs-toggle="tab" data-bs-target="#reservas" type="button" role="tab">Reservas Recebidas</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="avaliacoes-tab" data-bs-toggle="tab" data-bs-target="#avaliacoes" type="button" role="tab">Avaliações dos Anúncios</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="perfil-tab" data-bs-toggle="tab" data-bs-target="#perfil" type="button" role="tab">Meu Perfil</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="anfitriaoTabsContent">
+
+    <div class="tab-pane fade show active" id="estoque" role="tabpanel">
+        <div class="d-flex justify-content-between mb-3">
+            <h4 class="text-secondary">Gerenciar Anúncios e Acomodações</h4>
+            <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalNovoAnuncio">+ Criar Novo Anúncio</button>
+        </div>
+
+        <div class="row">
+            {% for an in estoque %}
+            <div class="col-md-12 mb-4">
+                <div class="card shadow-sm border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title text-warning mb-1">#{{ an.anid }} - {{ an.antitulo }}</h5>
+                                <p class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> {{ an.ceprua }}, {{ an.endnumero }} - {{ an.cepcidade }}/{{ an.cepestado }} (CEP: {{ an.cepid }})</p>
+                            </div>
+                            <form action="/anfitriao/estoque/deletar/{{ an.anid }}" method="POST" onsubmit="return confirm('Apagar anúncio deletará toda a acomodação e reservas. Confirmar?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Apagar Anúncio</button>
+                            </form>
+                        </div>
+                        
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                                <h6>Detalhes Financeiros</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>Dia Útil:</strong> R$ {{ an.ancustodiautil }}</li>
+                                    <li><strong>Fim de Semana:</strong> R$ {{ an.ancustofimsem }}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Acomodação (ID: {{ an.acid }})</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>Capacidade:</strong> {{ an.accapacpessoa }} pessoas</li>
+                                    <li><strong>Quartos:</strong> {{ an.acqtdquartos }} | <strong>Banheiros:</strong> {{ an.acqtdbanheiros }}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Comodidades</h6>
+                                <p class="small mb-1">{{ an.comodidades if an.comodidades else 'Nenhuma cadastrada' }}</p>
+                                <form action="/anfitriao/estoque/comodidade/adicionar" method="POST" class="d-flex gap-2 mt-2">
+                                    <input type="hidden" name="AcID" value="{{ an.acid }}">
+                                    <select name="ComID" class="form-select form-select-sm" required>
+                                        <option value="" disabled selected>Add Comodidade...</option>
+                                        {% for c in comodidades %}
+                                        <option value="{{ c.comid }}">{{ c.comnome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-secondary btn-sm">+</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="reservas" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Hóspede</th>
+                            <th>Anúncio</th>
+                            <th>Período</th>
+                            <th>Status Atual</th>
+                            <th class="text-center">Ações / Moderação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in reservas %}
+                        <tr>
+                            <td>{{ res.hospedenome }} <span class="text-muted small">(ID: {{ res.hospedeid }})</span></td>
+                            <td>{{ res.antitulo }}</td>
+                            <td>{{ res.resdtin.strftime('%d/%m') }} a {{ res.resdtout.strftime('%d/%m') }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if res.resstatus == 'Confirmada' else 'warning' if res.resstatus == 'Pendente' else 'danger' }}">
+                                    {{ res.resstatus }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if res.resstatus == 'Pendente' or res.resstatus == 'Confirmada' %}
+                                <form action="/anfitriao/reserva/status/{{ res.resid }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="ResStatus" value="Cancelada">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Rejeitar/Cancelar esta reserva?');">Rejeitar</button>
+                                </form>
+                                {% endif %}
+                                {% if res.resstatus == 'Pendente' %}
+                                <form action="/anfitriao/reserva/status/{{ res.resid }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="ResStatus" value="Confirmada">
+                                    <button type="submit" class="btn btn-success btn-sm">Aprovar</button>
+                                </form>
+                                {% endif %}
+
+                                {% if res.resstatus == 'Confirmada' and not res.ja_avaliou_hospede %}
+                                <div class="dropdown d-inline ms-2">
+                                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">Avaliar Hóspede</button>
+                                    <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="width: 250px;">
+                                        <form action="/anfitriao/avaliacao/hospede/nova" method="POST">
+                                            <input type="hidden" name="HosUsrID" value="{{ res.hospedeid }}">
+                                            <input type="hidden" name="AnID" value="{{ res.anid }}">
+                                            <div class="mb-2">
+                                                <label class="small">Nota ao Hóspede (1 a 5)</label>
+                                                <input type="number" name="AvNota" class="form-control form-control-sm" min="1" max="5" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="small">Comportamento/Comentário</label>
+                                                <textarea name="AvComentario" class="form-control form-control-sm" rows="2" required></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">Enviar Avaliação</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% elif res.ja_avaliou_hospede %}
+                                    <span class="badge bg-primary ms-2">Hóspede Avaliado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="avaliacoes" role="tabpanel">
+        <h4 class="text-secondary mb-3">O que dizem sobre seus espaços</h4>
+        <div class="list-group shadow-sm">
+            {% for av in avaliacoes %}
+            <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1 text-warning">{{ av.antitulo }}</h6>
+                    <small class="text-muted">{{ av.avdata.strftime('%d/%m/%Y') }}</small>
+                </div>
+                <p class="mb-1"><strong>Nota: {{ av.avnota }}/5</strong> - "{{ av.avcomentario }}"</p>
+                <small class="text-muted">Avaliado por: {{ av.hospedenome }}</small>
+            </div>
+            {% else %}
+            <div class="list-group-item text-center text-muted p-4">Você ainda não recebeu avaliações.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="perfil" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark fw-bold">Dados da Conta</div>
+                    <div class="card-body">
+                        <form action="/anfitriao/perfil/atualizar" method="POST">
+                            <div class="mb-3">
+                                <label>Nome Completo</label>
+                                <input type="text" name="UsrNome" class="form-control" value="{{ perfil.usrnome }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>CPF</label>
+                                <input type="text" name="UsrCPF" class="form-control" value="{{ perfil.usrcpf }}" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100 fw-bold">Atualizar Dados</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">Telefones de Contato (Públicos para Hóspedes)</div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for tel in telefones %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ tel.tlfnumero }}
+                                <form action="/anfitriao/telefone/deletar/{{ tel.tlfid }}" method="POST">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <form action="/anfitriao/telefone/adicionar" method="POST" class="d-flex gap-2">
+                            <input type="text" name="TlfNumero" class="form-control form-control-sm" placeholder="Ex: 21999999999" required>
+                            <button type="submit" class="btn btn-secondary btn-sm">Adicionar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoAnuncio" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="/anfitriao/estoque/novo" method="POST">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold">Cadastrar Nova Propriedade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="text-secondary border-bottom pb-1">1. Dados do Anúncio</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-12">
+                            <input type="text" name="AnTitulo" class="form-control" placeholder="Título (ex: Lindo Flat no Centro)" required>
+                        </div>
+                        <div class="col-md-12">
+                            <textarea name="AnDesc" class="form-control" rows="2" placeholder="Descrição do local..." required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="number" step="0.01" name="AnCustoDiaUtil" class="form-control" placeholder="Preço Dia Útil (R$)" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="number" step="0.01" name="AnCustoFimSem" class="form-control" placeholder="Preço Fim de Semana (R$)" required>
+                        </div>
+                    </div>
+
+                    <h6 class="text-secondary border-bottom pb-1">2. Capacidade da Acomodação</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <input type="number" name="AcCapacPessoa" class="form-control" placeholder="Máx. Pessoas" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" name="AcQtdQuartos" class="form-control" placeholder="Qtd. Quartos" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" name="AcQtdBanheiros" class="form-control" placeholder="Qtd. Banheiros" required>
+                        </div>
+                    </div>
+
+                    <h6 class="text-secondary border-bottom pb-1">3. Localização (Endereço e CEP)</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <input type="text" name="CepID" class="form-control" placeholder="CEP (ex: 20000-000)" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="CepRua" class="form-control" placeholder="Rua/Avenida" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" name="EndNumero" class="form-control" placeholder="Número" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" name="EndComplemento" class="form-control" placeholder="Complemento (Apto, Bloco)">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="CepBairro" class="form-control" placeholder="Bairro" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="CepCidade" class="form-control" placeholder="Cidade" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" name="CepEstado" class="form-control" placeholder="UF" maxlength="2" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Publicar Anúncio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
