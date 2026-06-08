@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="text-warning mb-4">🔑 Portal do Anfitrião: Olá, {{ perfil.usrnome }}</h2>
+<h2 class="text-warning mb-4">Portal do Anfitrião: Olá, {{ perfil.usrnome }}</h2>
 
 <ul class="nav nav-tabs mb-4" id="anfitriaoTabs" role="tablist">
     <li class="nav-item">
@@ -109,6 +109,7 @@
                                     <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Rejeitar/Cancelar esta reserva?');">Rejeitar</button>
                                 </form>
                                 {% endif %}
+                                
                                 {% if res.resstatus == 'Pendente' %}
                                 <form action="/anfitriao/reserva/status/{{ res.resid }}" method="POST" class="d-inline">
                                     <input type="hidden" name="ResStatus" value="Confirmada">
@@ -117,28 +118,43 @@
                                 {% endif %}
 
                                 {% if res.resstatus == 'Confirmada' and not res.ja_avaliou_hospede %}
-                                <div class="dropdown d-inline ms-2">
-                                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">Avaliar Hóspede</button>
-                                    <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="width: 250px;">
-                                        <form action="/anfitriao/avaliacao/hospede/nova" method="POST">
-                                            <input type="hidden" name="HosUsrID" value="{{ res.hospedeid }}">
-                                            <input type="hidden" name="AnID" value="{{ res.anid }}">
-                                            <div class="mb-2">
-                                                <label class="small">Nota ao Hóspede (1 a 5)</label>
-                                                <input type="number" name="AvNota" class="form-control form-control-sm" min="1" max="5" required>
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="small">Comportamento/Comentário</label>
-                                                <textarea name="AvComentario" class="form-control form-control-sm" rows="2" required></textarea>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary btn-sm w-100">Enviar Avaliação</button>
-                                        </form>
+                                <button type="button" class="btn btn-outline-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#modalAvaliaHos{{ res.resid }}">
+                                    Avaliar Hóspede
+                                </button>
+
+                                <div class="modal fade" id="modalAvaliaHos{{ res.resid }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form action="/anfitriao/avaliacao/hospede/nova" method="POST">
+                                                <div class="modal-header bg-primary text-white">
+                                                    <h6 class="modal-title">Avaliar Hóspede: {{ res.hospedenome }}</h6>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-start">
+                                                    <input type="hidden" name="HosUsrID" value="{{ res.hospedeid }}">
+                                                    <input type="hidden" name="AnID" value="{{ res.anid }}">
+                                                    <input type="hidden" name="ResID" value="{{ res.resid }}">
+                                                    
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold">Nota ao Hóspede (1 a 5)</label>
+                                                        <input type="number" name="AvNota" class="form-control" min="1" max="5" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold">Comportamento/Comentário</label>
+                                                        <textarea name="AvComentario" class="form-control" rows="3" required></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer p-2">
+                                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Enviar Avaliação</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                                 {% elif res.ja_avaliou_hospede %}
                                     <span class="badge bg-primary ms-2">Hóspede Avaliado</span>
                                 {% endif %}
-                            </td>
+                                </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -156,7 +172,8 @@
                     <h6 class="mb-1 text-warning">{{ av.antitulo }}</h6>
                     <small class="text-muted">{{ av.avdata.strftime('%d/%m/%Y') }}</small>
                 </div>
-                <p class="mb-1"><strong>Nota: {{ av.avnota }}/5</strong> - "{{ av.avcomentario }}"</p>
+                <p class="mb-1"><strong>Nota: {{ av.avnota }}/5</strong> ({{ av.tipoavstr }})</p>
+                <p class="mb-1 text-muted">"{{ av.avcomentario }}"</p>
                 <small class="text-muted">Avaliado por: {{ av.hospedenome }}</small>
             </div>
             {% else %}

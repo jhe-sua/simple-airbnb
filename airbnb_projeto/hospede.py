@@ -35,9 +35,14 @@ def dashboard():
     """
     cur.execute(query_catalogo)
     catalogo = cur.fetchall()
-
+    
+    # Verifica com base no ResID se já existe avaliação do Tipo 1 (Hóspede -> Anúncio)
     query_reservas = """
-        SELECT r.ResID, r.ResDtIn, r.ResDtOut, r.ResStatus, a.AnTitulo, a.AnID
+        SELECT r.ResID, r.ResDtIn, r.ResDtOut, r.ResStatus, a.AnTitulo, a.AnID,
+               EXISTS (
+                   SELECT 1 FROM AVALIACAO av 
+                   WHERE av.ResID = r.ResID AND av.TipoAvID = 1
+               ) as ja_avaliou
         FROM RESERVA r
         JOIN ANUNCIO a ON r.AnID = a.AnID
         WHERE r.HosUsrID = %s
@@ -48,30 +53,23 @@ def dashboard():
     
     cur.close()
     conn.close()
-    
     return render_template('hospede.html', perfil=perfil, telefones=telefones, catalogo=catalogo, reservas=reservas)
 
 @hospede_bp.route('/perfil/atualizar', methods=['POST'])
 def atualizar_perfil():
-    nome = request.form['UsrNome']
-    cpf = request.form['UsrCPF']
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE USUARIO SET UsrNome = %s, UsrCPF = %s WHERE UsrID = %s;", (nome, cpf, HOSPEDE_ID))
-    conn.commit()
-    conn.close()
+    cur.execute("UPDATE USUARIO SET UsrNome = %s, UsrCPF = %s WHERE UsrID = %s;", (request.form['UsrNome'], request.form['UsrCPF'], HOSPEDE_ID))
+    conn.commit(); conn.close()
     return redirect(url_for('hospede.dashboard'))
 
 @hospede_bp.route('/telefone/adicionar', methods=['POST'])
 def adicionar_telefone():
-    numero = request.form['TlfNumero']
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT COALESCE(MAX(TlfID), 0) + 1 AS prox_id FROM TELEFONE;")
-    prox_id = cur.fetchone()['prox_id']
-    cur.execute("INSERT INTO TELEFONE (TlfID, TlfNumero, UsrID) VALUES (%s, %s, %s);", (prox_id, numero, HOSPEDE_ID))
-    conn.commit()
-    conn.close()
+    cur.execute("INSERT INTO TELEFONE (TlfID, TlfNumero, UsrID) VALUES (%s, %s, %s);", (cur.fetchone()['prox_id'], request.form['TlfNumero'], HOSPEDE_ID))
+    conn.commit(); conn.close()
     return redirect(url_for('hospede.dashboard'))
 
 @hospede_bp.route('/telefone/deletar/<int:tlf_id>', methods=['POST'])
@@ -79,80 +77,62 @@ def deletar_telefone(tlf_id):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM TELEFONE WHERE TlfID = %s AND UsrID = %s;", (tlf_id, HOSPEDE_ID))
-    conn.commit()
-    conn.close()
+    conn.commit(); conn.close()
     return redirect(url_for('hospede.dashboard'))
 
-# ==========================================
-# ATUALIZAÇÃO: ADICIONADOS OS NOVOS CAMPOS DE RESERVA
-# ==========================================
 @hospede_bp.route('/reserva/nova', methods=['POST'])
 def criar_reserva():
-    an_id = request.form['AnID']
-    dt_in = request.form['ResDtIn']
-    dt_out = request.form['ResDtOut']
-    qtd_adultos = request.form['ResQtdAdultos']
-    
-    # Capturando os novos inputs do formulário
-    qtd_criancas = request.form.get('ResQtdCriancas', 0)
-    qtd_bebes = request.form.get('ResQtdBebes', 0)
-    qtd_pets = request.form.get('ResQtdPets', 0)
-    forma_paga = request.form['ResFormaPaga']
-    
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT COALESCE(MAX(ResID), 0) + 1 AS prox_id FROM RESERVA;")
     prox_id = cur.fetchone()['prox_id']
-    
-    # Inserção completa com todas as colunas preenchidas pelo usuário
     query = """
         INSERT INTO RESERVA (ResID, ResDtIn, ResDtOut, ResStatus, ResFormaPaga, 
                              ResQtdAdultos, ResQtdCriancas, ResQtdBebes, ResQtdPets, HosUsrID, AnID)
         VALUES (%s, %s, %s, 'Confirmada', %s, %s, %s, %s, %s, %s, %s);
     """
-    cur.execute(query, (prox_id, dt_in, dt_out, forma_paga, 
-                        qtd_adultos, qtd_criancas, qtd_bebes, qtd_pets, HOSPEDE_ID, an_id))
-    conn.commit()
-    conn.close()
+    cur.execute(query, (prox_id, request.form['ResDtIn'], request.form['ResDtOut'], request.form['ResFormaPaga'], 
+                        request.form['ResQtdAdultos'], request.form.get('ResQtdCriancas', 0), 
+                        request.form.get('ResQtdBebes', 0), request.form.get('ResQtdPets', 0), HOSPEDE_ID, request.form['AnID']))
+    conn.commit(); conn.close()
     return redirect(url_for('hospede.dashboard'))
 
 @hospede_bp.route('/reserva/cancelar/<int:res_id>', methods=['POST'])
 def cancelar_reserva(res_id):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE RESERVA SET ResStatus = 'Cancelada' WHERE ResID = %s AND HosUsrID = %s AND ResStatus != 'Cancelada';", (res_id, HOSPEDE_ID))
-    conn.commit()
-    conn.close()
+    cur.execute("UPDATE RESERVA SET ResStatus = 'Cancelada' WHERE ResID = %s AND HosUsrID = %s;", (res_id, HOSPEDE_ID))
+    conn.commit(); conn.close()
     return redirect(url_for('hospede.dashboard'))
 
 @hospede_bp.route('/avaliacao/nova', methods=['POST'])
 def criar_avaliacao():
+    """Gera em simultâneo a avaliação do Anúncio (Tipo 1) e do Anfitrião (Tipo 2)."""
     an_id = request.form['AnID']
-    res_id = request.form['ResID'] # NOVO: Captura qual reserva exata gerou a avaliação
-    nota = request.form['AvNota']
-    comentario = request.form['AvComentario']
+    res_id = request.form['ResID']
     hoje = datetime.now().strftime('%Y-%m-%d')
     
     conn = get_connection()
     cur = conn.cursor()
     
-    # Gera o ID da avaliação
-    cur.execute("SELECT COALESCE(MAX(AvID), 0) + 1 AS prox_id FROM AVALIACAO;")
-    prox_id = cur.fetchone()['prox_id']
-    
-    # Descobre quem é o dono do anúncio
     cur.execute("SELECT AnfUsrID FROM ANUNCIO WHERE AnID = %s;", (an_id,))
     anf_id = cur.fetchone()['anfusrid']
     
-    # 1. Insere a avaliação normalmente
-    query_insert = """
-        INSERT INTO AVALIACAO (AvID, AvNota, AvComentario, AvData, TipoAvID, AnID, AnfUsrID, HosUsrID)
-        VALUES (%s, %s, %s, %s, 1, %s, %s, %s);
-    """
-    cur.execute(query_insert, (prox_id, nota, comentario, hoje, an_id, anf_id, HOSPEDE_ID))
+    # 1. Inserir Avaliação do Espaço (TipoAvID = 1)
+    cur.execute("SELECT COALESCE(MAX(AvID), 0) + 1 AS prox_id FROM AVALIACAO;")
+    id_anuncio = cur.fetchone()['prox_id']
+    cur.execute("""
+        INSERT INTO AVALIACAO (AvID, AvNota, AvComentario, AvData, AnID, AnfUsrID, HosUsrID, TipoAvID, ResID)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, 1, %s);
+    """, (id_anuncio, request.form['AvNotaAnuncio'], request.form['AvComentarioAnuncio'], hoje, an_id, anf_id, HOSPEDE_ID, res_id))
     
-    # 2. O TRUQUE: Muda o status daquela reserva específica para que ela não possa ser reavaliada
-    cur.execute("UPDATE RESERVA SET ResStatus = 'Avaliada' WHERE ResID = %s;", (res_id,))
+    # 2. Inserir Avaliação do Anfitrião (TipoAvID = 2)
+    cur.execute("SELECT COALESCE(MAX(AvID), 0) + 1 AS prox_id FROM AVALIACAO;")
+    id_anfitriao = cur.fetchone()['prox_id']
+    cur.execute("""
+        INSERT INTO AVALIACAO (AvID, AvNota, AvComentario, AvData, AnID, AnfUsrID, HosUsrID, TipoAvID, ResID)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, 2, %s);
+    """, (id_anfitriao, request.form['AvNotaAnfitriao'], request.form['AvComentarioAnfitriao'], hoje, an_id, anf_id, HOSPEDE_ID, res_id))
     
     conn.commit()
     conn.close()
