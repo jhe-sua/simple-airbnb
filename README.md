@@ -1,3 +1,7 @@
+# Simple airbnb
+
+Criação de um CRUD (talves um pouco mais do que isso) com ajuda de modelos de IA, para leitura da modelagem de banco de dados simplficada da Airbnb (que era o foco deste projeto)
+
 # Criar data base
 
 Entre no psql e crie o seguinte data base:
